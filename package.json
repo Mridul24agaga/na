@@ -9,8 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.2",
+    "@types/jsdom": "^21.1.7",
     "canvas-confetti": "^1.9.3",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.7.4",
+    "jsdom": "^26.1.0",
     "lucide-react": "^0.488.0",
     "next": "15.3.0",
     "openai": "^4.95.0",

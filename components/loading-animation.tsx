@@ -16,7 +16,7 @@ export function LoadingAnimation({ text = "Loading..." }: LoadingAnimationProps)
           transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
         />
       </div>
-      <span>{text}</span>
+      <span className="text-sm text-gray-600">{text}</span>
     </div>
   )
 }
