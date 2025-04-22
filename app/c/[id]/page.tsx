@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { SeoToolRenderer } from "@/components/seo-tool-renderer"
+import SeoToolRenderer  from "@/components/seo-tool-renderer"
 import { Loader2 } from "lucide-react"
 
 export default function ToolPage() {

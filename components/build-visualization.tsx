@@ -569,7 +569,7 @@ export function setup${featureSlug}() {
                       ))}
                       {isBuilding && (
                         <div className="flex items-center">
-                          <span className="mr-2">></span>
+                          <span className="mr-2"></span>
                           <Loader2 className="h-4 w-4 animate-spin text-green-400" />
                         </div>
                       )}
