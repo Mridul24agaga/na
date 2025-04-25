@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   ArrowRight,
   CheckCircle,
@@ -12,7 +12,6 @@ import {
   Star,
   Settings,
   Download,
-  ArrowUpRight,
   ExternalLink,
   Clock,
   Award,
@@ -24,13 +23,16 @@ import {
   Palette,
   Play,
   ChevronRight,
-  MousePointer,
   Zap,
+  Paperclip,
+  Circle,
+  LogOut,
+  User,
 } from "lucide-react"
 import Image from "next/image"
-
-// Add at the top of the file
 import { Poppins } from "next/font/google"
+import AuthModal from "@/components/auth-modal"
+import { supabase } from "@/lib/supabase-client"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -42,6 +44,61 @@ export default function Page() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkUser = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      setUser(session?.user || null)
+      setLoading(false)
+
+      // Set up auth state listener
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user || null)
+      })
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    }
+
+    checkUser()
+  }, [])
+
+  const handleTextareaFocus = () => {
+    if (!user) {
+      setIsAuthModalOpen(true)
+    }
+  }
+
+  const handleLogin = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) throw error
+  }
+
+  const handleSignup = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
+    if (error) throw error
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+  }
 
   const toggleVideo = () => {
     if (videoRef.current) {
@@ -57,6 +114,14 @@ export default function Page() {
 
   return (
     <div className={`min-h-screen bg-[#FFF8E1] overflow-hidden relative ${poppins.variable} font-['Poppins']`}>
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLogin={handleLogin}
+        onSignup={handleSignup}
+      />
+
       {/* Decorative elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[10%] left-[5%] w-[800px] h-[800px] border border-dashed border-[#FFB74D]/30 rounded-full"></div>
@@ -105,12 +170,39 @@ export default function Page() {
               <a href="#pricing" className="text-gray-900 hover:text-gray-700 text-sm font-medium">
                 Pricing
               </a>
-              <button className="bg-[#FFEB3B] text-gray-900 px-4 py-2 rounded-md hover:bg-[#FDD835] transition-colors text-sm font-medium shadow-sm border-2 border-black">
-                Log In
-              </button>
-              <button className="bg-[#26A69A] text-white px-4 py-2 rounded-md hover:bg-[#00897B] transition-colors text-sm font-medium shadow-sm border-2 border-black">
-                Sign Up
-              </button>
+
+              {user ? (
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <User className="h-5 w-5 text-gray-700" />
+                    <span className="text-sm font-medium">{user.email}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="bg-white text-gray-900 px-4 py-2 rounded-md hover:bg-gray-100 transition-colors text-sm font-medium shadow-sm border-2 border-black flex items-center"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Log Out
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="bg-[#FFEB3B] text-gray-900 px-4 py-2 rounded-md hover:bg-[#FDD835] transition-colors text-sm font-medium shadow-sm border-2 border-black"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAuthModalOpen(true)
+                    }}
+                    className="bg-[#26A69A] text-white px-4 py-2 rounded-md hover:bg-[#00897B] transition-colors text-sm font-medium shadow-sm border-2 border-black"
+                  >
+                    Sign Up
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Mobile menu button */}
@@ -135,111 +227,142 @@ export default function Page() {
               <a href="#pricing" className="block px-3 py-2 text-gray-900 hover:bg-gray-50 rounded-md text-sm">
                 Pricing
               </a>
-              <button className="w-full text-left px-3 py-2 bg-[#FFEB3B] text-gray-900 rounded-md hover:bg-[#FDD835] transition-colors text-sm border-2 border-black">
-                Log In
-              </button>
-              <button className="w-full text-left px-3 py-2 bg-[#26A69A] text-white rounded-md hover:bg-[#00897B] transition-colors text-sm mt-2 border-2 border-black">
-                Sign Up
-              </button>
+
+              {user ? (
+                <>
+                  <div className="block px-3 py-2 text-gray-900 rounded-md text-sm">
+                    <User className="h-4 w-4 inline mr-2" />
+                    {user.email}
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-3 py-2 bg-white text-gray-900 rounded-md hover:bg-gray-50 transition-colors text-sm border-2 border-black flex items-center"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Log Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="w-full text-left px-3 py-2 bg-[#FFEB3B] text-gray-900 rounded-md hover:bg-[#FDD835] transition-colors text-sm border-2 border-black"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="w-full text-left px-3 py-2 bg-[#26A69A] text-white rounded-md hover:bg-[#00897B] transition-colors text-sm mt-2 border-2 border-black"
+                  >
+                    Sign Up
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-16 pb-24 bg-[#FFEB3B]">
+      <section className="relative z-10 py-16 bg-[#FFF8E1]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
-            <div className="lg:w-1/2">
-              <div className="inline-flex items-center px-3 py-1 bg-white rounded-full mb-6 sm:mb-8 border-2 border-black">
-                <Star className="h-4 w-4 text-[#FFC107] mr-1" />
-                <span className="text-xs font-semibold text-gray-800 mr-1">Rated 4.9</span>
-                <span className="text-xs text-gray-600">on Capterra</span>
-                <ArrowRight className="h-3 w-3 text-gray-400 ml-1" />
-              </div>
+          <div className="flex flex-col items-center text-center">
+            <div className="inline-flex items-center px-3 py-1 bg-white rounded-full mb-6 border-2 border-black">
+              <span className="text-xs font-semibold text-gray-800 mr-1">AI-Powered</span>
+              <span className="text-xs text-gray-600">SEO Tools</span>
+              <ArrowRight className="h-3 w-3 text-gray-400 ml-1" />
+            </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 sm:mb-8 leading-tight">
-                The most affordable <br />
-                <span className="text-[#FF7043]">Typeform</span> <br />
-                alternative
-              </h1>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-center mb-6 leading-tight text-black">
+              What SEO tool do you <br />
+              <span className="text-[#FF7043]">want to build</span> today?
+            </h1>
 
-              <p className="text-base sm:text-lg text-gray-700 mb-8 sm:mb-10 max-w-lg">
-                FormCraft is a form builder that provides UNLIMITED forms and responses for FREE. You can add logic,
-                custom domains, embed forms on your website, and much more 😎
-              </p>
+            <p className="text-lg text-black mb-10 max-w-3xl mx-auto text-center">
+              Prompt, generate, and deploy custom SEO tools for your website or business in minutes.
+            </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-8 sm:mb-10">
-                <div className="relative">
-                  {/* Black background for 3D effect */}
-                  <div className="absolute inset-0 bg-black rounded-md transform translate-x-1 translate-y-1"></div>
-                  <button className="relative z-10 bg-[#FF7043] text-white px-6 sm:px-8 py-3 rounded-md hover:bg-[#F4511E] transition-colors text-base font-medium shadow-md w-full sm:w-auto border-2 border-black">
-                    Create free account
+            <div className="w-full max-w-3xl mx-auto relative mb-12">
+              {/* Black background for 3D effect */}
+              <div className="absolute inset-0 bg-black rounded-lg transform translate-x-2 translate-y-2"></div>
+              <div className="relative z-10 bg-white p-4 rounded-lg border-2 border-black">
+                <textarea
+                  className="w-full p-3 border-0 focus:outline-none text-black resize-none"
+                  rows={3}
+                  placeholder={
+                    user
+                      ? "Describe the SEO tool you want to build..."
+                      : "Login or signup to start building your SEO tool..."
+                  }
+                  onFocus={handleTextareaFocus}
+                  readOnly={!user}
+                ></textarea>
+
+                <div className="flex justify-between items-center mt-2 border-t pt-3">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      className={`flex items-center ${user ? "text-gray-600 hover:text-gray-900" : "text-gray-400 cursor-not-allowed"}`}
+                      onClick={() => !user && setIsAuthModalOpen(true)}
+                    >
+                      <FileText className="h-5 w-5 mr-1" />
+                      <span className="text-sm">Examples</span>
+                    </button>
+                    <button
+                      className={`flex items-center ${user ? "text-gray-600 hover:text-gray-900" : "text-gray-400 cursor-not-allowed"}`}
+                      onClick={() => !user && setIsAuthModalOpen(true)}
+                    >
+                      <Paperclip className="h-5 w-5 mr-1" />
+                      <span className="text-sm">Attach</span>
+                    </button>
+                  </div>
+                  <button
+                    className={`${user ? "bg-[#FF7043] hover:bg-[#F4511E]" : "bg-gray-400 cursor-not-allowed"} text-white px-4 py-2 rounded-md transition-colors text-sm font-medium border-2 border-black`}
+                    onClick={() => !user && setIsAuthModalOpen(true)}
+                  >
+                    Generate Tool <Sparkles className="h-4 w-4 ml-1 inline" />
                   </button>
-                </div>
-                <a
-                  href="#how-it-works"
-                  className="flex items-center justify-center text-gray-900 hover:text-gray-700 px-4 py-3 border-2 border-black rounded-md bg-white"
-                >
-                  Have a Typeform? <span className="underline ml-1">Import it now</span>
-                </a>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                <div className="flex items-center bg-white px-3 py-1 rounded-full border-2 border-black">
-                  <CheckCircle className="h-5 w-5 text-[#4CAF50] mr-2" />
-                  <span className="text-sm text-gray-700">Unlimited forms</span>
-                </div>
-                <div className="flex items-center bg-white px-3 py-1 rounded-full border-2 border-black">
-                  <CheckCircle className="h-5 w-5 text-[#4CAF50] mr-2" />
-                  <span className="text-sm text-gray-700">No credit card required</span>
-                </div>
-                <div className="flex items-center bg-white px-3 py-1 rounded-full border-2 border-black">
-                  <CheckCircle className="h-5 w-5 text-[#4CAF50] mr-2" />
-                  <span className="text-sm text-gray-700">Cancel anytime</span>
                 </div>
               </div>
             </div>
 
-            <div className="lg:w-1/2 relative mt-10 lg:mt-0">
-              <div className="absolute -top-10 -right-10 w-[200px] h-[200px] sm:w-[300px] sm:h-[300px] bg-[#FF7043]/20 rounded-blob z-0"></div>
+            <div className="flex flex-wrap justify-center gap-3 mb-8">
+              <div className="flex items-center bg-white px-3 py-2 rounded-full border-2 border-black">
+                <Circle className="h-5 w-5 text-[#1E88E5] mr-2" />
+                <span className="text-sm font-medium text-black">Keyword Research Tool</span>
+              </div>
+              <div className="flex items-center bg-white px-3 py-2 rounded-full border-2 border-black">
+                <Circle className="h-5 w-5 text-[#43A047] mr-2" />
+                <span className="text-sm font-medium text-black">Blog SEO Analyzer</span>
+              </div>
+              <div className="flex items-center bg-white px-3 py-2 rounded-full border-2 border-black">
+                <Circle className="h-5 w-5 text-[#FB8C00] mr-2" />
+                <span className="text-sm font-medium text-black">Meta Tag Generator</span>
+              </div>
+            </div>
 
-              <div className="relative z-10">
-                {/* Black background for 3D effect */}
-                <div className="absolute inset-0 bg-black rounded-xl transform translate-x-3 translate-y-3"></div>
-                <div className="relative z-10 bg-white p-4 sm:p-6 rounded-xl shadow-lg border-4 border-black transform rotate-1">
-                  <div className="aspect-video relative rounded-lg overflow-hidden border-2 border-black">
-                    <Image
-                      src="/images/form-builder-interface.png"
-                      alt="Form Builder Interface"
-                      fill
-                      className="object-cover"
-                    />
-
-                    {/* Interactive elements overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent flex items-end justify-center p-4">
-                      <div className="bg-white/90 px-4 py-2 rounded-full border-2 border-black flex items-center">
-                        <MousePointer className="h-4 w-4 text-[#FF7043] mr-2" />
-                        <span className="text-sm font-medium">Interactive Builder</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-center text-xs sm:text-sm text-gray-500 mt-2 sm:mt-3 flex items-center justify-center">
-                    <span className="mr-1">Try it now</span>
-                    <ArrowUpRight className="h-2 w-2 sm:h-3 sm:w-3" />
-                  </div>
-                </div>
+            <div className="flex flex-wrap justify-center gap-3">
+              <div className="flex items-center bg-white px-3 py-2 rounded-full border-2 border-black">
+                <Circle className="h-5 w-5 text-[#00897B] mr-2" />
+                <span className="text-sm font-medium text-black">Local SEO Assistant</span>
+              </div>
+              <div className="flex items-center bg-white px-3 py-2 rounded-full border-2 border-black">
+                <Circle className="h-5 w-5 text-[#E64A19] mr-2" />
+                <span className="text-sm font-medium text-black">E-commerce SEO Tool</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Replace wavy border with image */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <Image src="/images/yellow-wave.png" alt="Wave divider" width={1440} height={100} className="w-full h-auto" />
+        {/* Decorative elements */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+          <div className="absolute top-[10%] right-[10%] w-[100px] h-[100px] bg-[#FFB74D]/30 rounded-full"></div>
+          <div className="absolute bottom-[20%] left-[15%] w-[150px] h-[150px] bg-[#FF7043]/20 rounded-blob -rotate-12"></div>
+          <div className="absolute top-[40%] left-[5%] w-[60px] h-[60px] bg-[#26A69A]/30 rounded-full"></div>
+          <div className="absolute bottom-[10%] right-[20%] w-[200px] h-[200px] bg-[#FFEB3B]/20 rounded-blob rotate-45"></div>
         </div>
       </section>
 
+      {/* Rest of the page content remains the same */}
       {/* Video Section */}
       <section className="relative z-10 py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
